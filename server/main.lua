@@ -65,6 +65,7 @@ local function generateServiceTasks(count)
     
     for i = 1, count do
         tasks[i].coords = spots[i]
+        tasks[i].typeIndex = i
     end
     
     return tasks
@@ -267,8 +268,8 @@ RegisterNetEvent('peak_service:server:taskCompleted', function(taskIndex)
     if not service.tasks or not service.tasks[taskIndex] then return end
 
     local currentTime = os.time()
-
-    if taskTime[source] and (currentTime - taskTime[source]) < sharedConfig.tasks[taskIndex].duration / 1000 then
+    
+    if taskTime[source] and (currentTime - taskTime[source]) < 2 then
         utils.handleExploit(source, {
             title = 'Community Service Exploit Attempt',
             message = 'Player attempted to complete a task too quickly.'
