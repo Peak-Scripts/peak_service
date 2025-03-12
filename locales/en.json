@@ -1,0 +1,64 @@
+{
+    "notify": {
+        "cannot_leave": "You cannot leave the service area!",
+        "already_in_service": "Player is already in community service",
+        "sent_to_service": "Sent player %s to community service",
+        "been_sent_to_service": "You have been sent to community service by %s",
+        "service_completed": "You have completed your service",
+        "tasks_remaining": "%d tasks remaining",
+        "escape_penalty": "Penalty added for attempting to escape! %s tasks added",
+        "player_not_in_service": "Player is no longer in community service",
+        "player_released": "Released %s from community service",
+        "service_updated": "Updated service for %s",
+        "invalid_player": "Invalid player ID",
+        "invalid_identifier": "Invalid identifier provided",
+        "offline_service_assigned": "Assigned community service to offline player with identifier: %s"
+    },
+    "ui": {
+        "service_info": "Community Service Information",
+        "admin_label": "Admin",
+        "tasks_label": "Tasks Remaining",
+        "reason_label": "Reason",
+        "update_service": "Update Service",
+        "tasks_input": {
+            "label": "Tasks Remaining",
+            "description": "Number of tasks remaining"
+        },
+        "reason_input": {
+            "label": "Reason",
+            "description": "Reason for community service"
+        },
+        "release_button": "Release from Service",
+        "release_description": "Immediately release player from community service",
+        "update_button": "Update Service",
+        "update_description": "Change tasks remaining and reason",
+        "services_title": "Community Service Management",
+        "no_players": "No players currently in community service",
+        "player_entry": "%s - %d tasks",
+        "player_description": "Reason: %s | Admin: %s",
+        "manage_player": "Manage %s",
+        "service_task": "Service Task",
+        "task_action": "[E] - %s"
+    },
+    "nui": {
+        "title": "Community Service",
+        "assigned_by": "Assigned by",
+        "admin": "%s",
+        "reason_label": "Reason",
+        "reason": "%s",
+        "progress_label": "Progress",
+        "tasks": "%d/%d tasks"
+    },
+    "dialog": {
+        "title": "Assign Community Service",
+        "type": "Target Type",
+        "type_id": "Player ID",
+        "type_identifier": "Identifier",
+        "target": "Target",
+        "target_desc": "Enter player ID or identifier based on selection above",
+        "amount": "Number of Tasks",
+        "amount_desc": "How many tasks to assign",
+        "reason": "Reason",
+        "reason_desc": "Reason for community service"
+    }
+}

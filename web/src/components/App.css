@@ -1,0 +1,66 @@
+.nui-wrapper {
+  text-align: center;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+pre {
+  counter-reset:line-numbering;
+  padding:12px 0px 14px 0;
+  color:#ecf0f1;
+  line-height:140%;
+}
+
+.popup-thing {
+  border-radius: 10px;
+  width: 500px;
+  height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+}
+body {
+  background: transparent !important;
+  background-color: transparent !important;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+#root {
+  background: transparent !important;
+  background-color: transparent !important;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.container {
+  height: 100%;
+  width: 100%;
+  position: relative;
+  pointer-events: auto;
+}
+
+.card {
+  pointer-events: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.3s ease-out;
+}
+
