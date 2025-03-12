@@ -66,7 +66,7 @@ jobs:
         run: |
           mkdir -p ./temp/peak_service
           mkdir -p ./temp/peak_service/web
-          cp ./{README.md,LICENSE,fxmanifest.lua,} ./temp/peak_service
+          cp ./{README.md,LICENSE,fxmanifest.lua} ./temp/peak_service
           cp -r ./{modules,shared,config,client,server,locales} ./temp/peak_service
           cp -r ./web/dist ./temp/peak_service/web/dist
           cd ./temp && zip -r ../peak_service.zip ./peak_service
