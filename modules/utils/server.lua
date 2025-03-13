@@ -56,7 +56,7 @@ function utils.logPlayer(source, data)
     if not serverConfig.logging.enabled then return end
 
     if serverConfig.logging.system == 'ox_lib' then
-        lib.logger(source, 'Store Robbery', data.message)
+        lib.logger(source, 'Community Service', data.message)
     elseif serverConfig.logging.system == 'discord' then
         local playerName = GetPlayerName(source)
         local identifiers = GetPlayerIdentifiers(source)

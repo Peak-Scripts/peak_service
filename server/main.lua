@@ -99,16 +99,17 @@ local function loadPlayerService(playerId)
             end
         end
 
+        local tasks = generateServiceTasks(math.min(result.tasks_remaining, #serverConfig.taskSpots))
+
         activeServices[playerId] = {
             tasksRemaining = result.tasks_remaining,
             originalTasks = result.original_tasks,
             admin = result.admin,
             reason = result.reason,
             identifier = identifier,
-            originalPosition = originalPos
+            originalPosition = originalPos,
+            tasks = tasks  
         }
-        
-        local tasks = generateServiceTasks(math.min(result.tasks_remaining, #serverConfig.taskSpots))
 
         TriggerClientEvent('peak_service:client:startService', playerId, {
             location = sharedConfig.location,
@@ -156,14 +157,13 @@ local function releasePlayer(playerId)
         message = ('Player released from community service. Original admin: %s, Reason: %s'):format(service.admin, service.reason)
     })
     
-    activeServices[playerId] = nil
-
     if serverConfig.confiscateItems then
         exports.ox_inventory:ReturnInventory(playerId)
     end
     
+    activeServices[playerId] = nil
+    
     TriggerClientEvent('peak_service:client:releaseFromService', playerId, originalPosition)
-
     utils.notify(playerId, locale('notify.service_completed'), 'success')
 end
 
@@ -261,11 +261,34 @@ end
 RegisterNetEvent('peak_service:server:taskCompleted', function(taskIndex)
     local source = source
 
-    if not activeServices[source] then return end
-    if not taskIndex or type(taskIndex) ~= 'number' then return end
+    if not activeServices[source] then
+        local player = bridge.getPlayer(source)
+        local identifier = bridge.getPlayerIdentifier(player)
+        
+        if identifier then
+            local result = MySQL.single.await('SELECT * FROM peak_service WHERE identifier = ?', {
+                identifier
+            })
+            
+            if result then
+                loadPlayerService(source)
+            end
+        end
+        
+        if not activeServices[source] then 
+            return 
+        end
+    end
+
+    if not taskIndex or type(taskIndex) ~= 'number' then 
+        return 
+    end
     
     local service = activeServices[source]
-    if not service.tasks or not service.tasks[taskIndex] then return end
+    
+    if not service.tasks or not service.tasks[taskIndex] then 
+        return 
+    end
 
     local currentTime = os.time()
     
@@ -289,7 +312,6 @@ RegisterNetEvent('peak_service:server:taskCompleted', function(taskIndex)
     end
 
     taskTime[source] = currentTime
-
     service.tasksRemaining = service.tasksRemaining - 1
     
     utils.logPlayer(source, {
@@ -302,6 +324,7 @@ RegisterNetEvent('peak_service:server:taskCompleted', function(taskIndex)
     TriggerClientEvent('peak_service:client:updateUI', source, {
         admin = service.admin,
         remainingTasks = service.tasksRemaining,
+        completedTasks = service.originalTasks - service.tasksRemaining,
         originalTasks = service.originalTasks,
         reason = service.reason
     })
@@ -348,7 +371,12 @@ local function updateService(playerId, data)
     
     if data.tasksRemaining then
         changes[#changes + 1] = ('tasks: %d → %d'):format(service.tasksRemaining, data.tasksRemaining)
+        local completedTasks = service.originalTasks - service.tasksRemaining
         service.tasksRemaining = data.tasksRemaining
+
+        if data.tasksRemaining > (service.originalTasks - completedTasks) then
+            service.originalTasks = data.tasksRemaining + completedTasks
+        end
     end
     
     if data.reason then
@@ -366,6 +394,7 @@ local function updateService(playerId, data)
     TriggerClientEvent('peak_service:client:updateUI', playerId, {
         admin = service.admin,
         remainingTasks = service.tasksRemaining,
+        completedTasks = service.originalTasks - service.tasksRemaining,
         originalTasks = service.originalTasks,
         reason = service.reason
     })

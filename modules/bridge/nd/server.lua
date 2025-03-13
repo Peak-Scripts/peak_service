@@ -5,6 +5,7 @@ function bridge.getPlayer(source)
     return exports.ND_Core:getPlayer(source)
 end
 
+---@param identifier string
 function bridge.getSourceFromIdentifier(identifier)
     local players = exports.NDCore:getPlayers()
     for _, info in pairs(players) do
@@ -15,20 +16,9 @@ function bridge.getSourceFromIdentifier(identifier)
     return false
 end
 
-function bridge.checkCopCount()
-    local amount = 0
-    local players = exports.NDCore:getPlayers()
-    local policeDepartments = { 'sahp', 'lspd', 'bcso' }
-
-    for _, player in pairs(players) do
-        for i=1, #policeDepartments do
-            if player.groups[policeDepartments[i]] then
-                amount += 1
-            end
-        end
-    end
-    
-    return amount
+---@param player table
+function bridge.getPlayerIdentifier(player)
+    return player.identifier
 end
 
 AddEventHandler('ND:characterLoaded', function(character)

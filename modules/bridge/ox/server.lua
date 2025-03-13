@@ -6,24 +6,15 @@ function bridge.getPlayer(source)
     return Ox.GetPlayer(source)
 end
 
+---@param identifier string
 function bridge.getSourceFromIdentifier(identifier)
     local player = Ox.GetPlayerFromFilter({ identifier = identifier })
     return player and player.source or nil
 end
 
+---@param player table
 function bridge.getPlayerIdentifier(player)
     return player.identifier
-end
-
-function bridge.checkCopCount()
-    local amount = 0
-    
-    local players = Ox.GetPlayers({ groups = { ['police'] = 1 } })
-    for _, player in pairs(players) do
-        amount += 1
-    end
-
-    return amount
 end
 
 RegisterNetEvent('ox:playerLoaded', function(playerId)

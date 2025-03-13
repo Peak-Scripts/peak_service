@@ -7,6 +7,7 @@ import './App.css';
 interface CommunityServiceData {
   admin: string;
   remainingTasks: number;
+  completedTasks: number;
   originalTasks: number;
   reason: string;
   locales?: Record<string, string>;
@@ -16,6 +17,7 @@ const App: React.FC = () => {
   const [data, setData] = React.useState<CommunityServiceData>({
     admin: '',
     remainingTasks: 0,
+    completedTasks: 0,
     originalTasks: 0,
     reason: ''
   });
@@ -27,7 +29,8 @@ const App: React.FC = () => {
     }
     setData({
       ...serviceData,
-      originalTasks: serviceData.originalTasks || serviceData.remainingTasks
+      originalTasks: serviceData.originalTasks,
+      completedTasks: serviceData.completedTasks || 0
     });
   });
 
@@ -62,8 +65,8 @@ const App: React.FC = () => {
               <div>
                 <p className="text-[11px] 2xl:text-xs text-white/50">{locales.progress_label || 'Progress'}</p>
                 <p className="text-xs 2xl:text-sm font-medium">
-                  {locales.tasks?.replace('%d', data.remainingTasks.toString()).replace('%d', data.originalTasks.toString()) || 
-                    `${data.remainingTasks}/${data.originalTasks} tasks`}
+                  {locales.tasks?.replace('%d', data.completedTasks.toString()).replace('%d', data.originalTasks.toString()) || 
+                    `${data.completedTasks}/${data.originalTasks} tasks`}
                 </p>
               </div>
             </CardContent>

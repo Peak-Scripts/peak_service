@@ -3,6 +3,8 @@ local sharedConfig = require 'config.shared'
 local utils = require 'modules.utils.client'
 local currentTasks = nil
 local currentPoint = nil
+local inService = false
+local serviceZone = nil
 
 ---@return table<string, string>
 local function getUILocales()
@@ -54,7 +56,7 @@ local function startTaskAtLocation(task, taskIndex)
         label = task.label,
         position = 'bottom',
         useWhileDead = false,
-        canCancel = true,
+        canCancel = false,
         disable = {
             move = true,
             car = true,
@@ -66,53 +68,63 @@ local function startTaskAtLocation(task, taskIndex)
             flag = task.animation.flag
         },
     }) then 
-        lib.hideTextUI()
         TriggerServerEvent('peak_service:server:taskCompleted', taskIndex)
     end
 end
 
 local function cleanupService()
+    lib.hideTextUI()
+
+    if serviceZone then
+        serviceZone:remove()
+        serviceZone = nil
+    end
+
     if currentPoint then
-        if currentPoint.zonePoint then
-            currentPoint.zonePoint:remove()
-        end
-        
         if currentPoint.blip then
             RemoveBlip(currentPoint.blip)
         end
 
+        if currentPoint.zonePoint then
+            currentPoint.zonePoint:remove()
+        end
+        
         currentPoint:remove()
         currentPoint = nil
     end
 
     currentTasks = nil
-    lib.hideTextUI()
 end
 
 ---@param data table
 RegisterNetEvent('peak_service:client:startService', function(data)
+    inService = true
     currentTasks = data.tasks
     teleportToService(data.location)
 
     sendNUIMessage('setVisible', true)
 
-    sendNUIMessage('updateServiceData', {
+    local initialData = {
         admin = data.admin,
-        remainingTasks = 0,
+        remainingTasks = data.originalTasks,
+        completedTasks = 0,
         originalTasks = data.originalTasks,
         reason = data.reason,
         locales = getUILocales()
-    })
+    }
+    sendNUIMessage('updateServiceData', initialData)
 
     local lastPenaltyTime = 0
 
-    local zone = lib.points.new({
+    serviceZone = lib.points.new({
         coords = data.location.center,
         distance = data.location.radius,
         zoneData = data.location
     })
 
-    function zone:onExit()
+    function serviceZone:onExit()
+        if not inService then return end
+        
         if sharedConfig.penalties.enabled and (GetGameTimer() - lastPenaltyTime) > 10000 then
             lastPenaltyTime = GetGameTimer()
             TriggerServerEvent('peak_service:server:escapePenalty')
@@ -124,6 +136,7 @@ RegisterNetEvent('peak_service:client:startService', function(data)
     end
 
     local currentTaskIndex = 1
+    local isCompletingTask = false
 
     local function createNewTaskPoint()
         if currentPoint then
@@ -142,29 +155,39 @@ RegisterNetEvent('peak_service:client:startService', function(data)
             task = task,
             blip = createTaskBlip(task.coords),
             nearby = function(self)
-                DrawMarker(config.marker.type, self.coords.x, self.coords.y, self.coords.z, 
-                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
-                    config.marker.scale.x, config.marker.scale.y, config.marker.scale.z, 
-                    config.marker.color.r, config.marker.color.g, config.marker.color.b, config.marker.color.a * 255, 
-                    false, true, 2, false, nil, nil, false)
-                if self.currentDistance < 1.5 then
-                    if not IsNuiFocused() then
-                        lib.showTextUI(locale('ui.task_action', self.task.label))
-                    end
-                    
-                    if IsControlJustReleased(0, 38) then
-                        lib.hideTextUI()
-                        startTaskAtLocation(self.task, currentTaskIndex)
-                        
-                        if self.blip then
-                            RemoveBlip(self.blip)
+                if not isCompletingTask then
+                    DrawMarker(config.marker.type, self.coords.x, self.coords.y, self.coords.z, 
+                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
+                        config.marker.scale.x, config.marker.scale.y, config.marker.scale.z, 
+                        config.marker.color.r, config.marker.color.g, config.marker.color.b, config.marker.color.a * 255, 
+                        false, true, 2, false, nil, nil, false)
+                    if self.currentDistance < 1.5 then
+                        if not IsNuiFocused() then
+                            lib.showTextUI(locale('ui.task_action', self.task.label))
                         end
                         
-                        currentTaskIndex = currentTaskIndex % #currentTasks + 1
-                        createNewTaskPoint()
+                        if IsControlJustReleased(0, 38) then
+                            local taskToComplete = self.task
+                            local taskIndex = currentTaskIndex
+                            
+                            if self.blip then
+                                RemoveBlip(self.blip)
+                            end
+                            lib.hideTextUI()
+                            currentPoint:remove()
+                            currentPoint = nil
+                            
+                            startTaskAtLocation(taskToComplete, taskIndex)
+                            
+                            if currentTaskIndex < #currentTasks then
+                                currentTaskIndex = currentTaskIndex + 1
+                                Wait(100)
+                                createNewTaskPoint()
+                            end
+                        end
+                    else
+                        lib.hideTextUI()
                     end
-                else
-                    lib.hideTextUI()
                 end
             end
         })
@@ -192,16 +215,20 @@ end)
 
 ---@param data table
 RegisterNetEvent('peak_service:client:updateUI', function(data)
-    sendNUIMessage('updateServiceData', {
+    local updateData = {
         admin = data.admin,
-        remainingTasks = data.originalTasks - data.remainingTasks,
+        remainingTasks = data.remainingTasks,
+        completedTasks = data.completedTasks or (data.originalTasks - data.remainingTasks),
         originalTasks = data.originalTasks,
-        reason = data.reason
-    })
+        reason = data.reason,
+        locales = getUILocales()
+    }
+    sendNUIMessage('updateServiceData', updateData)
 end)
 
 ---@param originalPosition table
 RegisterNetEvent('peak_service:client:releaseFromService', function(originalPosition)
+    inService = false
     cleanupService()
 
     if originalPosition then
