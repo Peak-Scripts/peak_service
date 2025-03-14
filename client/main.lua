@@ -51,6 +51,7 @@ end
 ---@param task table
 ---@param taskIndex number
 local function startTaskAtLocation(task, taskIndex)
+    FreezeEntityPosition(cache.ped, true)
     if lib.progressCircle({
         duration = task.duration,
         label = task.label,
@@ -68,7 +69,10 @@ local function startTaskAtLocation(task, taskIndex)
             flag = task.animation.flag
         },
     }) then 
+        FreezeEntityPosition(cache.ped, false)
         TriggerServerEvent('peak_service:server:taskCompleted', taskIndex)
+    else
+        FreezeEntityPosition(cache.ped, false)
     end
 end
 
@@ -106,12 +110,13 @@ RegisterNetEvent('peak_service:client:startService', function(data)
 
     local initialData = {
         admin = data.admin,
-        remainingTasks = data.originalTasks,
+        remainingTasks = data.remainingTasks,
         completedTasks = 0,
         originalTasks = data.originalTasks,
         reason = data.reason,
         locales = getUILocales()
     }
+
     sendNUIMessage('updateServiceData', initialData)
 
     local lastPenaltyTime = 0
@@ -223,6 +228,7 @@ RegisterNetEvent('peak_service:client:updateUI', function(data)
         reason = data.reason,
         locales = getUILocales()
     }
+
     sendNUIMessage('updateServiceData', updateData)
 end)
 
@@ -289,6 +295,7 @@ RegisterNetEvent('peak_service:client:openServicesMenu', function(services)
     end
 
     local options = {}
+    
     for _, service in ipairs(services) do
         options[#options + 1] = {
             title = locale('ui.player_entry', service.playerName, service.tasksRemaining),

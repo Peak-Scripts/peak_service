@@ -8,7 +8,7 @@ return {
     tasks = {
         {
             label = 'Clean the floor',
-            duration = 10000,
+            duration = 1000,
             animation = {
                 dict = 'amb@world_human_janitor@male@base',
                 clip = 'base',

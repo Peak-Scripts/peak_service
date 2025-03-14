@@ -18,58 +18,30 @@ MySQL.ready(function()
     ]])
 end)
 
----@param location table
 ---@param count number
 ---@return table
-local function getRandomTaskSpots(location, count)
-    local spots = {}
-    local availableSpots = table.clone(location)
-    
-    for i = 1, count do
-        if #availableSpots == 0 then
-            availableSpots = table.clone(location)
-        end
-        
-        local randomIndex = math.random(1, #availableSpots)
-        spots[i] = availableSpots[randomIndex]
-        table.remove(availableSpots, randomIndex)
-    end
-    
-    return spots
-end
-
----@param count number
----@return table
-local function getRandomTasks(count)
+local function generateServiceTasks(count)
     local tasks = {}
     local availableTasks = table.clone(sharedConfig.tasks)
-    
+    local spots = serverConfig.taskSpots
+
     for i = 1, count do
         if #availableTasks == 0 then
             availableTasks = table.clone(sharedConfig.tasks)
         end
+
+        local randomTaskIndex = math.random(1, #availableTasks)
+        tasks[i] = table.clone(availableTasks[randomTaskIndex])
+        table.remove(availableTasks, randomTaskIndex)
         
-        local randomIndex = math.random(1, #availableTasks)
-        tasks[i] = table.clone(availableTasks[randomIndex])
-        table.remove(availableTasks, randomIndex)
+        local spotIndex = ((i-1) % #spots) + 1
+        tasks[i].coords = spots[spotIndex]
+        tasks[i].typeIndex = i
     end
-    
+
     return tasks
 end
 
----@param count number
----@return table
-local function generateServiceTasks(count)
-    local spots = getRandomTaskSpots(serverConfig.taskSpots, count)
-    local tasks = getRandomTasks(count)
-    
-    for i = 1, count do
-        tasks[i].coords = spots[i]
-        tasks[i].typeIndex = i
-    end
-    
-    return tasks
-end
 
 ---@param playerId number
 local function loadPlayerService(playerId)
@@ -99,7 +71,7 @@ local function loadPlayerService(playerId)
             end
         end
 
-        local tasks = generateServiceTasks(math.min(result.tasks_remaining, #serverConfig.taskSpots))
+        local tasks = generateServiceTasks(result.tasks_remaining)
 
         activeServices[playerId] = {
             tasksRemaining = result.tasks_remaining,
@@ -108,7 +80,7 @@ local function loadPlayerService(playerId)
             reason = result.reason,
             identifier = identifier,
             originalPosition = originalPos,
-            tasks = tasks  
+            tasks = tasks
         }
 
         TriggerClientEvent('peak_service:client:startService', playerId, {
@@ -216,7 +188,7 @@ local function startService(data)
         return
     end
 
-    local tasks = generateServiceTasks(math.min(data.amount, #serverConfig.taskSpots))
+    local tasks = generateServiceTasks(data.amount)
 
     if target then
         activeServices[target] = {
@@ -275,20 +247,14 @@ RegisterNetEvent('peak_service:server:taskCompleted', function(taskIndex)
             end
         end
         
-        if not activeServices[source] then 
-            return 
-        end
+        if not activeServices[source] then return end
     end
 
-    if not taskIndex or type(taskIndex) ~= 'number' then 
-        return 
-    end
+    if not taskIndex or type(taskIndex) ~= 'number' then return end
     
     local service = activeServices[source]
     
-    if not service.tasks or not service.tasks[taskIndex] then 
-        return 
-    end
+    if not service.tasks or not service.tasks[taskIndex] then return end
 
     local currentTime = os.time()
     
@@ -306,7 +272,7 @@ RegisterNetEvent('peak_service:server:taskCompleted', function(taskIndex)
     if not distance then
         utils.handleExploit(source, {
             title = 'Community Service Exploit Attempt',
-            message = ('Player tried to complete task from invalid distance: %.2f units'):format(distance)
+            message = 'Player tried to complete task from invalid distance'
         })
         return
     end
@@ -508,3 +474,4 @@ lib.addCommand(serverConfig.commands.removecomserv.name, {
     releasePlayer(playerId)
     utils.notify(source, locale('notify.player_released', playerName), 'success')
 end)
+

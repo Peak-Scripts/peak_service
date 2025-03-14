@@ -18,8 +18,8 @@ function bridge.getPlayerIdentifier(player)
     return player.identifier
 end
 
-RegisterNetEvent('esx:playerLoaded', function(player)
+AddEventHandler('esx:playerLoaded', function(player)
     OnPlayerLoaded(player)
-  end)
+end)
 
 return bridge

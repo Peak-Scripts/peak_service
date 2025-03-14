@@ -20,6 +20,9 @@
         "tasks_label": "Tasks Remaining",
         "reason_label": "Reason",
         "update_service": "Update Service",
+        "player_id_input": {
+            "label": "Player ID"
+        },
         "tasks_input": {
             "label": "Tasks Remaining",
             "description": "Number of tasks remaining"
