@@ -1,0 +1,67 @@
+{
+    "notify": {
+        "cannot_leave": "Nie możesz opuścić obszaru pracy!",
+        "already_in_service": "Gracz już wykonuje pracę społeczną",
+        "sent_to_service": "Wysłano gracza %s do pracy społecznej",
+        "been_sent_to_service": "Zostałeś wysłany do pracy społecznej przez %s",
+        "service_completed": "Ukończyłeś wszystkie prace",
+        "tasks_remaining": "Pozostało %d",
+        "escape_penalty": "Dodano karę za próbę ucieczki! Dodano %s",
+        "player_not_in_service": "Gracz nie wykonuje już prac społecznych",
+        "player_released": "Zwolniono %s z prac społecznych",
+        "service_updated": "Zaktualizowano prace dla %s",
+        "invalid_player": "Nieprawidłowy ID gracza",
+        "invalid_identifier": "Podano nieprawidłowy identyfikator",
+        "offline_service_assigned": "Przypisano prace społeczne graczowi offline z identyfikatorem: %s"
+    },
+    "ui": {
+        "service_info": "Informacje o służbie społecznej",
+        "admin_label": "Administrator",
+        "tasks_label": "Pozostałe zadania",
+        "reason_label": "Powód",
+        "update_service": "Zaktualizuj służbę",
+        "player_id_input": {
+            "label": "ID Gracza"
+        },
+        "tasks_input": {
+            "label": "Pozostałe zadania",
+            "description": "Liczba pozostałych zadań"
+        },
+        "reason_input": {
+            "label": "Powód",
+            "description": "Powód pracy społecznej"
+        },
+        "release_button": "Zwolnij z prac społecznych",
+        "release_description": "Natychmiast zwolnij gracza z prac społecznych",
+        "update_button": "Zaktualizuj prace",
+        "update_description": "Zmień liczbę pozostałych zadań i powód",
+        "services_title": "Zarządzanie pracą społeczną",
+        "no_players": "Brak graczy wykonujących prace społeczne",
+        "player_entry": "%s - %d zadań",
+        "player_description": "Powód: %s | Administrator: %s",
+        "manage_player": "Zarządzaj %s",
+        "service_task": "Prace społeczne",
+        "task_action": "[E] - %s"
+    },
+    "nui": {
+        "title": "Prace społeczne",
+        "assigned_by": "Przypisane przez",
+        "admin": "%s",
+        "reason_label": "Powód",
+        "reason": "%s",
+        "progress_label": "Postęp",
+        "tasks": "%d/%d zadań"
+    },
+    "dialog": {
+        "title": "Przypisz pracę społeczną",
+        "type": "Typ",
+        "type_id": "ID Gracza",
+        "type_identifier": "Identyfikator",
+        "target": "Cel",
+        "target_desc": "Wprowadź ID gracza lub identyfikator na podstawie powyższego wyboru",
+        "amount": "Liczba zadań do wykonania",
+        "amount_desc": "Ile zadań przypisać",
+        "reason": "Powód",
+        "reason_desc": "Powód prac społecznych"
+    }
+}
