@@ -1,0 +1,67 @@
+{
+    "notify": {
+        "cannot_leave": "Je kunt het taakgebied niet verlaten!",
+        "already_in_service": "Speler voert al taken uit",
+        "sent_to_service": "Speler %s taken gegeven",
+        "been_sent_to_service": "Je moet taken uitvoeren, gegeven door %s",
+        "service_completed": "Je hebt al je taken voltooid!",
+        "tasks_remaining": "Nog %d taken te gaan",
+        "escape_penalty": "Je hebt geprobeerd te ontsnappen! %s extra taken toegevoegd",
+        "player_not_in_service": "Speler hoeft geen taken meer",
+        "player_released": "%s is vrijgelaten van taken",
+        "service_updated": "Taken bijgewerkt voor %s",
+        "invalid_player": "Ongeldige speler ID",
+        "invalid_identifier": "Ongeldige identifier opgegeven",
+        "offline_service_assigned": "Taken toegewezen aan offline speler met identifier: %s"
+    },
+    "ui": {
+        "service_info": "Taak Informatie",
+        "admin_label": "Beheerder",
+        "tasks_label": "Resterende Taken",
+        "reason_label": "Reden",
+        "update_service": "Taken Bijwerken",
+        "player_id_input": {
+            "label": "Speler-ID"
+        },
+        "tasks_input": {
+            "label": "Resterende Taken",
+            "description": "Aantal resterende taken"
+        },
+        "reason_input": {
+            "label": "Reden",
+            "description": "Reden voor de taken"
+        },
+        "release_button": "Vrijlaten van Taken",
+        "release_description": "Speler direct vrijlaten van taken",
+        "update_button": "Taken Bijwerken",
+        "update_description": "Wijzig het aantal resterende taken en de reden",
+        "services_title": "Taakbeheer",
+        "no_players": "Er zijn momenteel geen spelers met taken",
+        "player_entry": "%s - %d taken",
+        "player_description": "Reden: %s | Beheerder: %s",
+        "manage_player": "Beheer %s",
+        "service_task": "Taak",
+        "task_action": "[E] - %s"
+    },
+    "nui": {
+        "title": "Taken",
+        "assigned_by": "Opgelegd door",
+        "admin": "%s",
+        "reason_label": "Reden",
+        "reason": "%s",
+        "progress_label": "Voortgang",
+        "tasks": "%d/%d taken voltooid"
+    },
+    "dialog": {
+        "title": "Taken Toewijzen",
+        "type": "Doeltype",
+        "type_id": "Speler-ID",
+        "type_identifier": "Identifier",
+        "target": "Doel",
+        "target_desc": "Voer een speler ID of identifier in op basis van de selectie hierboven",
+        "amount": "Aantal Taken",
+        "amount_desc": "Hoeveel taken moeten worden uitgevoerd",
+        "reason": "Reden",
+        "reason_desc": "Reden voor de opgelegde taken"
+    }
+}
