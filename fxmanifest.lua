@@ -11,7 +11,8 @@ ox_lib 'locale'
 
 shared_scripts {
     '@ox_lib/init.lua',
-    'shared/*.lua'
+    'shared/*.lua',
+    'init.lua',
 }
 
 server_scripts { 

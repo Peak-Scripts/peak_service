@@ -337,12 +337,14 @@ local function updateService(playerId, data)
     
     if data.tasksRemaining then
         changes[#changes + 1] = ('tasks: %d → %d'):format(service.tasksRemaining, data.tasksRemaining)
+        
         local completedTasks = service.originalTasks - service.tasksRemaining
-        service.tasksRemaining = data.tasksRemaining
 
-        if data.tasksRemaining > (service.originalTasks - completedTasks) then
-            service.originalTasks = data.tasksRemaining + completedTasks
-        end
+        service.originalTasks = data.tasksRemaining
+        service.tasksRemaining = data.tasksRemaining - completedTasks
+
+        service.tasks = generateServiceTasks(service.tasksRemaining)
+        TriggerClientEvent('peak_service:client:updateTasks', playerId, service.tasks)
     end
     
     if data.reason then

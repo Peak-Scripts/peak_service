@@ -5,6 +5,8 @@ local currentTasks = nil
 local currentPoint = nil
 local inService = false
 local serviceZone = nil
+local currentTaskIndex = 1
+local isCompletingTask = false
 
 ---@return table<string, string>
 local function getUILocales()
@@ -68,6 +70,12 @@ local function startTaskAtLocation(task, taskIndex)
             clip = task.animation.clip,
             flag = task.animation.flag
         },
+        prop = task.prop and {
+            model = joaat(task.prop.model),
+            bone = task.prop.bone,
+            pos = task.prop.pos,
+            rot = task.prop.rot
+        }
     }) then 
         FreezeEntityPosition(cache.ped, false)
         TriggerServerEvent('peak_service:server:taskCompleted', taskIndex)
@@ -100,10 +108,83 @@ local function cleanupService()
     currentTasks = nil
 end
 
+local function createNewTaskPoint()
+    if currentPoint then
+        currentPoint:remove()
+    end
+
+    if not currentTasks or not currentTasks[currentTaskIndex] then
+        return
+    end
+
+    local task = currentTasks[currentTaskIndex]
+
+    currentPoint = lib.points.new({
+        coords = task.coords,
+        distance = config.marker.drawDistance,
+        task = task,
+        blip = createTaskBlip(task.coords),
+        nearby = function(self)
+            if not isCompletingTask then
+                DrawMarker(config.marker.type, self.coords.x, self.coords.y, self.coords.z, 
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
+                    config.marker.scale.x, config.marker.scale.y, config.marker.scale.z, 
+                    config.marker.color.r, config.marker.color.g, config.marker.color.b, config.marker.color.a * 255, 
+                    false, true, 2, false, nil, nil, false)
+                if self.currentDistance < 1.5 then
+                    if not IsNuiFocused() then
+                        lib.showTextUI(locale('ui.task_action', self.task.label))
+                    end
+                    
+                    if IsControlJustReleased(0, 38) then
+                        local taskToComplete = self.task
+                        local taskIndex = currentTaskIndex
+                        
+                        if self.blip then
+                            RemoveBlip(self.blip)
+                        end
+                        lib.hideTextUI()
+                        currentPoint:remove()
+                        currentPoint = nil
+                        
+                        startTaskAtLocation(taskToComplete, taskIndex)
+                        
+                        if currentTaskIndex < #currentTasks then
+                            currentTaskIndex = currentTaskIndex + 1
+                            Wait(100)
+                            createNewTaskPoint()
+                        end
+                    end
+                else
+                    lib.hideTextUI()
+                end
+            end
+        end
+    })
+
+    function currentPoint:onEnter()
+        if self.currentDistance < 1.5 then
+            lib.showTextUI(locale('ui.task_action', self.task.label))
+        end
+    end
+
+    function currentPoint:onExit()
+        lib.hideTextUI()
+    end
+
+    function currentPoint:onRemove()
+        if self.blip then
+            RemoveBlip(self.blip)
+        end
+        lib.hideTextUI()
+    end
+end
+
 ---@param data table
 RegisterNetEvent('peak_service:client:startService', function(data)
     inService = true
     currentTasks = data.tasks
+    currentTaskIndex = 1
     teleportToService(data.location)
 
     sendNUIMessage('setVisible', true)
@@ -140,81 +221,6 @@ RegisterNetEvent('peak_service:client:startService', function(data)
         utils.notify(locale('notify.cannot_leave'), 'error')
     end
 
-    local currentTaskIndex = 1
-    local isCompletingTask = false
-
-    local function createNewTaskPoint()
-        if currentPoint then
-            currentPoint:remove()
-        end
-
-        if not currentTasks or not currentTasks[currentTaskIndex] then
-            return
-        end
-
-        local task = currentTasks[currentTaskIndex]
-
-        currentPoint = lib.points.new({
-            coords = task.coords,
-            distance = config.marker.drawDistance,
-            task = task,
-            blip = createTaskBlip(task.coords),
-            nearby = function(self)
-                if not isCompletingTask then
-                    DrawMarker(config.marker.type, self.coords.x, self.coords.y, self.coords.z, 
-                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
-                        config.marker.scale.x, config.marker.scale.y, config.marker.scale.z, 
-                        config.marker.color.r, config.marker.color.g, config.marker.color.b, config.marker.color.a * 255, 
-                        false, true, 2, false, nil, nil, false)
-                    if self.currentDistance < 1.5 then
-                        if not IsNuiFocused() then
-                            lib.showTextUI(locale('ui.task_action', self.task.label))
-                        end
-                        
-                        if IsControlJustReleased(0, 38) then
-                            local taskToComplete = self.task
-                            local taskIndex = currentTaskIndex
-                            
-                            if self.blip then
-                                RemoveBlip(self.blip)
-                            end
-                            lib.hideTextUI()
-                            currentPoint:remove()
-                            currentPoint = nil
-                            
-                            startTaskAtLocation(taskToComplete, taskIndex)
-                            
-                            if currentTaskIndex < #currentTasks then
-                                currentTaskIndex = currentTaskIndex + 1
-                                Wait(100)
-                                createNewTaskPoint()
-                            end
-                        end
-                    else
-                        lib.hideTextUI()
-                    end
-                end
-            end
-        })
-
-        function currentPoint:onEnter()
-            if self.currentDistance < 1.5 then
-                lib.showTextUI(locale('ui.task_action', self.task.label))
-            end
-        end
-
-        function currentPoint:onExit()
-            lib.hideTextUI()
-        end
-
-        function currentPoint:onRemove()
-            if self.blip then
-                RemoveBlip(self.blip)
-            end
-            lib.hideTextUI()
-        end
-    end
-
     createNewTaskPoint()
 end)
 
@@ -230,6 +236,27 @@ RegisterNetEvent('peak_service:client:updateUI', function(data)
     }
 
     sendNUIMessage('updateServiceData', updateData)
+end)
+
+---@param tasks table
+RegisterNetEvent('peak_service:client:updateTasks', function(tasks)
+    if not inService then return end
+    
+    if currentPoint then
+        if currentPoint.blip then
+            RemoveBlip(currentPoint.blip)
+        end
+        if currentPoint.zonePoint then
+            currentPoint.zonePoint:remove()
+        end
+        currentPoint:remove()
+        currentPoint = nil
+    end
+    
+    currentTasks = tasks
+    currentTaskIndex = 1
+    
+    createNewTaskPoint()
 end)
 
 ---@param originalPosition table
