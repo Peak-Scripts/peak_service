@@ -307,6 +307,8 @@ RegisterNetEvent('peak_service:server:escapePenalty', function()
     if not activeServices[source] then return end
     
     local service = activeServices[source]
+    local completedTasks = service.originalTasks - service.tasksRemaining
+    service.originalTasks = service.originalTasks + sharedConfig.penalties.tasks
     service.tasksRemaining = service.tasksRemaining + sharedConfig.penalties.tasks
     
     utils.logPlayer(source, {
@@ -319,6 +321,7 @@ RegisterNetEvent('peak_service:server:escapePenalty', function()
     TriggerClientEvent('peak_service:client:updateUI', source, {
         admin = service.admin,
         remainingTasks = service.tasksRemaining,
+        completedTasks = completedTasks,
         originalTasks = service.originalTasks,
         reason = service.reason
     })
