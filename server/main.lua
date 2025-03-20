@@ -302,33 +302,6 @@ RegisterNetEvent('peak_service:server:taskCompleted', function(taskIndex)
     end
 end)
 
-RegisterNetEvent('peak_service:server:escapePenalty', function()
-    local source = source
-    if not activeServices[source] then return end
-    
-    local service = activeServices[source]
-    local completedTasks = service.originalTasks - service.tasksRemaining
-    service.originalTasks = service.originalTasks + sharedConfig.penalties.tasks
-    service.tasksRemaining = service.tasksRemaining + sharedConfig.penalties.tasks
-    
-    utils.logPlayer(source, {
-        title = 'Community Service Escape Attempt',
-        message = ('Player attempted to escape. Added %d tasks as penalty. New total: %d'):format(sharedConfig.penalties.tasks, service.tasksRemaining)
-    })
-    
-    saveServiceData(source)
-    
-    TriggerClientEvent('peak_service:client:updateUI', source, {
-        admin = service.admin,
-        remainingTasks = service.tasksRemaining,
-        completedTasks = completedTasks,
-        originalTasks = service.originalTasks,
-        reason = service.reason
-    })
-    
-    utils.notify(source, locale('notify.escape_penalty', sharedConfig.penalties.tasks), 'error')
-end)
-
 ---@param playerId number
 ---@param data table
 ---@return boolean
@@ -372,6 +345,28 @@ local function updateService(playerId, data)
     
     return true
 end
+
+RegisterNetEvent('peak_service:server:escapePenalty', function()
+    local source = source
+    if not activeServices[source] then return end
+    
+    local service = activeServices[source]
+    local currentTasks = service.tasksRemaining
+    local newTasks = currentTasks + sharedConfig.penalties.tasks
+    
+    utils.logPlayer(source, {
+        title = 'Community Service Escape Attempt',
+        message = ('Player attempted to escape. Added %d tasks as penalty. New total: %d'):format(sharedConfig.penalties.tasks, newTasks)
+    })
+    
+    local updated = updateService(source, {
+        tasksRemaining = service.originalTasks + sharedConfig.penalties.tasks
+    })
+    
+    if updated then
+        utils.notify(source, locale('notify.escape_penalty', sharedConfig.penalties.tasks), 'error')
+    end
+end)
 
 ---@param playerId number
 ---@param data table
