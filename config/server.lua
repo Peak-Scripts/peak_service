@@ -26,6 +26,8 @@ return {
         name = 'Peak Scripts',
         image = 'https://r2.fivemanage.com/mRGMLnWSeQJ90gOfps6Wt/peakscripts.png',
         webhookUrl = ''
+
+        logIP = false
     },
 
     commands = {

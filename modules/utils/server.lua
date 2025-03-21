@@ -76,10 +76,10 @@ function utils.logPlayer(source, data)
                 playerIdentifiers.xbox = id:gsub('xbox:', '')
             elseif id:find('live:') then
                 playerIdentifiers.live = id:gsub('live:', '')
-            elseif id:find('ip:') then
-                playerIdentifiers.ip = id:gsub('ip:', '')
             elseif id:find('fivem:') then
-                playerIdentifiers.ip = id:gsub('fivem:', '')
+                playerIdentifiers.fivem = id:gsub('fivem:', '')
+            elseif id:find('ip:') and serverConfig.logging.logIP then
+                playerIdentifiers.ip = id:gsub('ip:', '')
             end
         end
     
@@ -91,8 +91,7 @@ function utils.logPlayer(source, data)
             'License: %s\n' ..
             'License2: %s\n' ..
             'Xbox: %s\n' ..
-            'Live: %s\n' ..
-            'IP: %s'):format(
+            'Live: %s'):format(
             data.message, 
             playerName,
             playerIdentifiers.fivem or 'Unknown',
@@ -101,9 +100,12 @@ function utils.logPlayer(source, data)
             playerIdentifiers.license or 'Unknown',
             playerIdentifiers.license2 or 'Unknown',
             playerIdentifiers.xbl or 'Unknown',
-            playerIdentifiers.live or 'Unknown',
-            playerIdentifiers.ip or 'Unknown'
+            playerIdentifiers.live or 'Unknown'
         )
+
+        if serverConfig.logging.logIP and playerIdentifiers.ip then
+            logMessage = logMessage .. ('\nIP: %s'):format(playerIdentifiers.ip)
+        end
     
         local payload = {
             username = serverConfig.logging.name,
