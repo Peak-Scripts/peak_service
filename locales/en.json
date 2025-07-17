@@ -12,7 +12,11 @@
         "service_updated": "Updated service for %s",
         "invalid_player": "Invalid player ID",
         "invalid_identifier": "Invalid identifier provided",
-        "offline_service_assigned": "Assigned community service to offline player with identifier: %s"
+        "offline_service_assigned": "Assigned community service to offline player with identifier: %s",
+        "items_saved": "Items saved successfully",
+        "offline_player_released": "Released offline player from service",
+        "offline_service_updated": "Updated offline player service",
+        "invalid_service_data": "Invalid service data"
     },
     "ui": {
         "service_info": "Community Service Information",
@@ -23,6 +27,7 @@
         "player_id_input": {
             "label": "Player ID"
         },
+        "player_identifier": "Player Identifier",
         "tasks_input": {
             "label": "Tasks Remaining",
             "description": "Number of tasks remaining"
@@ -39,9 +44,14 @@
         "no_players": "No players currently in community service",
         "player_entry": "%s - %d tasks",
         "player_description": "Reason: %s | Admin: %s",
+        "status_online": "Online",
+        "status_offline": "Offline",
+        "manage_items": "Manage Items",
+        "manage_items_description": "Edit player's confiscated items",
         "manage_player": "Manage %s",
         "service_task": "Service Task",
-        "task_action": "[E] - %s"
+        "task_action": "[E] - %s",
+        "status_label": "Status"
     },
     "nui": {
         "title": "Community Service",

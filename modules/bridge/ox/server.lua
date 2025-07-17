@@ -6,15 +6,16 @@ function bridge.getPlayer(source)
     return Ox.GetPlayer(source)
 end
 
----@param identifier string
-function bridge.getSourceFromIdentifier(identifier)
-    local player = Ox.GetPlayerFromFilter({ identifier = identifier })
+---@param stateId string
+function bridge.getSourceFromIdentifier(stateId)
+    local player = Ox.GetPlayerFromFilter({ stateId = stateId })
+
     return player and player.source or nil
 end
 
 ---@param player table
 function bridge.getPlayerIdentifier(player)
-    return player.identifier
+    return player.stateId
 end
 
 RegisterNetEvent('ox:playerLoaded', function(playerId)

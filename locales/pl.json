@@ -12,7 +12,11 @@
         "service_updated": "Zaktualizowano prace dla %s",
         "invalid_player": "Nieprawidłowy ID gracza",
         "invalid_identifier": "Podano nieprawidłowy identyfikator",
-        "offline_service_assigned": "Przypisano prace społeczne graczowi offline z identyfikatorem: %s"
+        "offline_service_assigned": "Przypisano prace społeczne graczowi offline z identyfikatorem: %s",
+        "items_saved": "Przedmioty zostały zapisane pomyślnie",
+        "offline_player_released": "Zwolniono gracza offline z prac społecznych",
+        "offline_service_updated": "Zaktualizowano prace społeczne gracza offline",
+        "invalid_service_data": "Nieprawidłowe dane usługi"
     },
     "ui": {
         "service_info": "Informacje o służbie społecznej",
@@ -39,9 +43,14 @@
         "no_players": "Brak graczy wykonujących prace społeczne",
         "player_entry": "%s - %d zadań",
         "player_description": "Powód: %s | Administrator: %s",
+        "status_online": "Online",
+        "status_offline": "Offline",
+        "manage_items": "Zarządzaj przedmiotami",
+        "manage_items_description": "Edytuj skonfiskowane przedmioty gracza",
         "manage_player": "Zarządzaj %s",
         "service_task": "Prace społeczne",
-        "task_action": "[E] - %s"
+        "task_action": "[E] - %s",
+        "status_label": "Status"
     },
     "nui": {
         "title": "Prace społeczne",

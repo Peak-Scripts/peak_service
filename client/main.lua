@@ -1,3 +1,11 @@
+--[[
+    https://github.com/Peak-Scripts
+
+    This file is licensed under LGPL-3.0 or higher <https://www.gnu.org/licenses/lgpl-3.0.en.html>
+
+    Copyright © 2025 Peak Scripts <https://github.com/Peak-Scripts>
+]]
+
 local config = require 'config.client'
 local sharedConfig = require 'config.shared'
 local utils = require 'modules.utils.client'
@@ -32,6 +40,13 @@ end
 
 ---@param location table
 local function teleportToService(location)
+    local vehicle = cache.vehicle
+    
+    if vehicle and vehicle ~= 0 then
+        TaskLeaveVehicle(cache.ped, vehicle, 0)
+        Wait(1500)
+    end
+    
     SetEntityCoords(cache.ped, location.center.x, location.center.y, location.center.z, false, false, false, true)
 end
 
@@ -54,6 +69,7 @@ end
 ---@param taskIndex number
 local function startTaskAtLocation(task, taskIndex)
     FreezeEntityPosition(cache.ped, true)
+
     if lib.progressCircle({
         duration = task.duration,
         label = task.label,
@@ -78,6 +94,7 @@ local function startTaskAtLocation(task, taskIndex)
         }
     }) then 
         FreezeEntityPosition(cache.ped, false)
+        
         TriggerServerEvent('peak_service:server:taskCompleted', taskIndex)
     else
         FreezeEntityPosition(cache.ped, false)
@@ -143,7 +160,9 @@ local function createNewTaskPoint()
                         if self.blip then
                             RemoveBlip(self.blip)
                         end
+
                         lib.hideTextUI()
+
                         currentPoint:remove()
                         currentPoint = nil
                         
@@ -184,7 +203,9 @@ end
 RegisterNetEvent('peak_service:client:startService', function(data)
     inService = true
     currentTasks = data.tasks
+
     currentTaskIndex = 1
+
     teleportToService(data.location)
 
     sendNUIMessage('setVisible', true)
@@ -209,7 +230,9 @@ RegisterNetEvent('peak_service:client:startService', function(data)
     })
 
     function serviceZone:onExit()
-        if not inService then return end
+        if not inService then 
+            return 
+        end
         
         if sharedConfig.penalties.enabled and (GetGameTimer() - lastPenaltyTime) > 10000 then
             lastPenaltyTime = GetGameTimer()
@@ -240,15 +263,19 @@ end)
 
 ---@param tasks table
 RegisterNetEvent('peak_service:client:updateTasks', function(tasks)
-    if not inService then return end
+    if not inService then 
+        return 
+    end
     
     if currentPoint then
         if currentPoint.blip then
             RemoveBlip(currentPoint.blip)
         end
+
         if currentPoint.zonePoint then
             currentPoint.zonePoint:remove()
         end
+        
         currentPoint:remove()
         currentPoint = nil
     end
@@ -262,6 +289,7 @@ end)
 ---@param originalPosition table
 RegisterNetEvent('peak_service:client:releaseFromService', function(originalPosition)
     inService = false
+
     cleanupService()
 
     if originalPosition then
@@ -294,7 +322,7 @@ lib.callback.register('peak_service:client:openDialog', function()
             description = locale('dialog.amount_desc'),
             required = true,
             min = 1,
-            max = 100
+            max = 100000
         },
         {
             type = 'input',
@@ -304,7 +332,9 @@ lib.callback.register('peak_service:client:openDialog', function()
         }
     })
 
-    if not input then return end
+    if not input then 
+        return 
+    end
 
     return {
         playerId = input[1] == 'id' and tonumber(input[2]) or nil,
@@ -324,13 +354,21 @@ RegisterNetEvent('peak_service:client:openServicesMenu', function(services)
     local options = {}
     
     for _, service in ipairs(services) do
+        local statusText = service.isOnline and locale('ui.status_online') or locale('ui.status_offline')
+        local statusColor = service.isOnline and 'green' or 'red'
+        local statusIcon = service.isOnline and 'circle' or 'circle'
+        local iconColor = service.isOnline and 'green' or 'red'
+        
         options[#options + 1] = {
             title = locale('ui.player_entry', service.playerName, service.tasksRemaining),
             description = locale('ui.player_description', service.reason, service.admin),
+            icon = statusIcon,
+            iconColor = iconColor,
             metadata = {
-                { label = locale('ui.player_id_input.label'), value = service.playerId },
+                { label = service.isOnline and locale('ui.player_id_input.label') or locale('ui.player_identifier'), value = service.isOnline and service.playerId or service.identifier },
                 { label = locale('ui.tasks_label'), value = service.tasksRemaining },
-                { label = locale('ui.admin_label'), value = service.admin }
+                { label = locale('ui.admin_label'), value = service.admin },
+                { label = locale('ui.status_label'), value = statusText, color = statusColor }
             },
             arrow = true,
             onSelect = function()
@@ -362,11 +400,13 @@ RegisterNetEvent('peak_service:client:openServicesMenu', function(services)
                                     }
                                 })
 
-                                if not input then return end
+                                if not input then
+                                    return 
+                                end
                                 
                                 local tasksRemaining, reason = tonumber(input[1]), input[2]
                                 
-                                TriggerServerEvent('peak_service:server:updateService', service.playerId, {
+                                TriggerServerEvent('peak_service:server:updateService', service.playerId, service.identifier, {
                                     tasksRemaining = tasksRemaining,
                                     reason = reason
                                 })
@@ -376,13 +416,19 @@ RegisterNetEvent('peak_service:client:openServicesMenu', function(services)
                             title = locale('ui.release_button'),
                             description = locale('ui.release_description'),
                             onSelect = function()
-                                TriggerServerEvent('peak_service:server:updateService', service.playerId, {
-                                    tasksRemaining = 0
-                                })
+                                TriggerServerEvent('peak_service:server:updateService', service.playerId, service.identifier, { tasksRemaining = 0})
+                            end
+                        },
+                        {
+                            title = locale('ui.manage_items'),
+                            description = locale('ui.manage_items_description'),
+                            onSelect = function()
+                                TriggerServerEvent('peak_service:server:openItemStash', service.identifier)
                             end
                         }
                     }
                 })
+
                 lib.showContext(('service_player_%s'):format(service.playerId))
             end
         }
@@ -396,4 +442,6 @@ RegisterNetEvent('peak_service:client:openServicesMenu', function(services)
 
     lib.showContext('community_service_menu')
 end)
+
+
 

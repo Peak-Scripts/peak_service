@@ -1,3 +1,11 @@
+--[[
+    https://github.com/Peak-Scripts
+
+    This file is licensed under LGPL-3.0 or higher <https://www.gnu.org/licenses/lgpl-3.0.en.html>
+
+    Copyright © 2025 Peak Scripts <https://github.com/Peak-Scripts>
+]]
+
 local sharedConfig = require 'config.shared'
 local serverConfig = require 'config.server'
 local utils = require 'modules.utils.server'
@@ -8,6 +16,7 @@ MySQL.ready(function()
     MySQL.query([[
         CREATE TABLE IF NOT EXISTS `peak_service` (
             `identifier` varchar(60) NOT NULL,
+            `player_name` varchar(60) DEFAULT NULL,
             `tasks_remaining` int DEFAULT 0,
             `original_tasks` int DEFAULT 0,
             `admin` varchar(60) NOT NULL,
@@ -16,7 +25,83 @@ MySQL.ready(function()
             PRIMARY KEY (`identifier`)
         )
     ]])
+
+    MySQL.query([[
+        CREATE TABLE IF NOT EXISTS `peak_service_items` (
+            `id` int AUTO_INCREMENT PRIMARY KEY,
+            `identifier` varchar(60) NOT NULL,
+            `item_name` varchar(100) NOT NULL,
+            `count` int NOT NULL DEFAULT 1,
+            `metadata` longtext DEFAULT NULL,
+            `slot` int NOT NULL,
+            INDEX `idx_identifier` (`identifier`)
+        )
+    ]])
 end)
+
+---@param playerId number
+---@param identifier string
+local function storePlayerItems(playerId, identifier)
+    if not serverConfig.confiscateItems then 
+        return
+    end
+    
+    local inventory = exports.ox_inventory:GetInventory(playerId)
+
+    if not inventory or not inventory.items then 
+        return 
+    end
+    
+    MySQL.query('DELETE FROM peak_service_items WHERE identifier = ?', { identifier })
+    
+    for slot, item in pairs(inventory.items) do
+        if item and item.name and item.count and item.count > 0 then
+            MySQL.insert('INSERT INTO peak_service_items (identifier, item_name, count, metadata, slot) VALUES (?, ?, ?, ?, ?)', {
+                identifier,
+                item.name,
+                item.count,
+                item.metadata and json.encode(item.metadata) or nil,
+                slot
+            })
+        end
+    end
+    
+    exports.ox_inventory:ClearInventory(playerId)
+end
+
+---@param identifier string
+---@return table
+local function getStoredItems(identifier)
+    local items = MySQL.query.await('SELECT * FROM peak_service_items WHERE identifier = ? ORDER BY slot', { identifier })
+    local formattedItems = {}
+    
+    for _, item in ipairs(items or {}) do
+        formattedItems[#formattedItems + 1] = {
+            name = item.item_name,
+            count = item.count,
+            metadata = item.metadata and json.decode(item.metadata) or nil,
+            slot = item.slot
+        }
+    end
+    
+    return formattedItems
+end
+
+---@param playerId number
+---@param identifier string
+local function returnStoredItems(playerId, identifier)
+    if not serverConfig.confiscateItems then 
+        return 
+    end
+    
+    local items = getStoredItems(identifier)
+    
+    for _, item in ipairs(items) do
+        exports.ox_inventory:AddItem(playerId, item.name, item.count, item.metadata)
+    end
+    
+    MySQL.query('DELETE FROM peak_service_items WHERE identifier = ?', { identifier })
+end
 
 ---@param count number
 ---@return table
@@ -31,7 +116,9 @@ local function generateServiceTasks(count)
         end
 
         local randomTaskIndex = math.random(1, #availableTasks)
+
         tasks[i] = table.clone(availableTasks[randomTaskIndex])
+
         table.remove(availableTasks, randomTaskIndex)
         
         local spotIndex = ((i-1) % #spots) + 1
@@ -42,13 +129,14 @@ local function generateServiceTasks(count)
     return tasks
 end
 
-
 ---@param playerId number
 local function loadPlayerService(playerId)
     local player = bridge.getPlayer(playerId)
     local identifier = bridge.getPlayerIdentifier(player)
 
-    if not player or not identifier then return end
+    if not player or not identifier then 
+        return 
+    end
     
     local result = MySQL.single.await('SELECT * FROM peak_service WHERE identifier = ?', {
         identifier
@@ -62,6 +150,7 @@ local function loadPlayerService(playerId)
             
             if ped then
                 local coords = GetEntityCoords(ped)
+
                 originalPos = { x = coords.x, y = coords.y, z = coords.z }
 
                 MySQL.update('UPDATE peak_service SET original_position = ? WHERE identifier = ?', {
@@ -73,15 +162,26 @@ local function loadPlayerService(playerId)
 
         local tasks = generateServiceTasks(result.tasks_remaining)
 
+        local currentPlayerName = GetPlayerName(playerId)
+        local finalPlayerName = result.player_name and result.player_name ~= 'Unknown' and result.player_name or currentPlayerName
+        
         activeServices[playerId] = {
             tasksRemaining = result.tasks_remaining,
             originalTasks = result.original_tasks,
             admin = result.admin,
             reason = result.reason,
             identifier = identifier,
+            playerName = finalPlayerName,
             originalPosition = originalPos,
             tasks = tasks
         }
+
+        if result.player_name == 'Unknown' or not result.player_name then
+            MySQL.update('UPDATE peak_service SET player_name = ? WHERE identifier = ?', {
+                currentPlayerName,
+                identifier
+            })
+        end
 
         TriggerClientEvent('peak_service:client:startService', playerId, {
             location = sharedConfig.location,
@@ -99,10 +199,13 @@ end
 local function saveServiceData(playerId)
     local service = activeServices[playerId]
 
-    if not service or not service.identifier then return end
+    if not service or not service.identifier then 
+        return 
+    end
     
-    MySQL.update('INSERT INTO peak_service (identifier, tasks_remaining, original_tasks, admin, reason, original_position) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE tasks_remaining = VALUES(tasks_remaining), original_tasks = VALUES(original_tasks), admin = VALUES(admin), reason = VALUES(reason), original_position = VALUES(original_position)', {
+    MySQL.update('INSERT INTO peak_service (identifier, player_name, tasks_remaining, original_tasks, admin, reason, original_position) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE tasks_remaining = VALUES(tasks_remaining), original_tasks = VALUES(original_tasks), admin = VALUES(admin), reason = VALUES(reason), original_position = VALUES(original_position), player_name = VALUES(player_name)', {
         service.identifier,
+        service.playerName or GetPlayerName(playerId),
         service.tasksRemaining,
         service.originalTasks,
         service.admin,
@@ -113,7 +216,9 @@ end
 
 ---@param playerId number
 local function releasePlayer(playerId)
-    if not activeServices[playerId] then return end
+    if not activeServices[playerId] then 
+        return 
+    end
     
     local originalPosition = activeServices[playerId].originalPosition
     local service = activeServices[playerId]
@@ -130,12 +235,14 @@ local function releasePlayer(playerId)
     })
     
     if serverConfig.confiscateItems then
-        exports.ox_inventory:ReturnInventory(playerId)
+        returnStoredItems(playerId, service.identifier)
     end
     
     activeServices[playerId] = nil
+    taskTime[playerId] = nil
     
     TriggerClientEvent('peak_service:client:releaseFromService', playerId, originalPosition)
+
     utils.notify(playerId, locale('notify.service_completed'), 'success')
 end
 
@@ -143,7 +250,9 @@ end
 local function startService(data)
     local admin = source
     
-    if not IsPlayerAceAllowed(admin, 'command') then return end
+    if not IsPlayerAceAllowed(admin, 'command') then 
+        return 
+    end
     
     local target = tonumber(data.playerId)
     local identifier = data.identifier
@@ -153,10 +262,12 @@ local function startService(data)
         return 
     end
 
-    local targetPlayer, originalPosition
+    local targetPlayer, originalPosition, playerName
 
     if target then
-        if not GetPlayerName(target) then
+        playerName = GetPlayerName(target)
+        
+        if not playerName then
             utils.notify(admin, locale('notify.invalid_player'), 'error')
             return
         end
@@ -171,7 +282,7 @@ local function startService(data)
             originalPosition = { x = coords.x, y = coords.y, z = coords.z }
 
             if serverConfig.confiscateItems then
-                exports.ox_inventory:ConfiscateInventory(target)
+                storePlayerItems(target, identifier)
             end
         end
     end
@@ -197,13 +308,15 @@ local function startService(data)
             admin = GetPlayerName(admin),
             reason = data.reason,
             identifier = identifier,
+            playerName = playerName,
             originalPosition = originalPosition,
             tasks = tasks
         }
     end
 
-    MySQL.update('INSERT INTO peak_service (identifier, tasks_remaining, original_tasks, admin, reason, original_position) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE tasks_remaining = VALUES(tasks_remaining), original_tasks = VALUES(original_tasks), admin = VALUES(admin), reason = VALUES(reason)', {
+    MySQL.update('INSERT INTO peak_service (identifier, player_name, tasks_remaining, original_tasks, admin, reason, original_position) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE tasks_remaining = VALUES(tasks_remaining), original_tasks = VALUES(original_tasks), admin = VALUES(admin), reason = VALUES(reason), player_name = VALUES(player_name)', {
         identifier,
+        playerName or 'Unknown',
         data.amount,
         data.amount,
         GetPlayerName(admin),
@@ -250,11 +363,15 @@ RegisterNetEvent('peak_service:server:taskCompleted', function(taskIndex)
         if not activeServices[source] then return end
     end
 
-    if not taskIndex or type(taskIndex) ~= 'number' then return end
+    if not taskIndex or type(taskIndex) ~= 'number' then 
+        return 
+    end
     
     local service = activeServices[source]
     
-    if not service.tasks or not service.tasks[taskIndex] then return end
+    if not service.tasks or not service.tasks[taskIndex] then 
+        return 
+    end
 
     local currentTime = os.time()
     
@@ -320,6 +437,7 @@ local function updateService(playerId, data)
         service.tasksRemaining = data.tasksRemaining - completedTasks
 
         service.tasks = generateServiceTasks(service.tasksRemaining)
+        
         TriggerClientEvent('peak_service:client:updateTasks', playerId, service.tasks)
     end
     
@@ -348,7 +466,10 @@ end
 
 RegisterNetEvent('peak_service:server:escapePenalty', function()
     local source = source
-    if not activeServices[source] then return end
+
+    if not activeServices[source] then 
+        return 
+    end
     
     local service = activeServices[source]
     local currentTasks = service.tasksRemaining
@@ -368,26 +489,118 @@ RegisterNetEvent('peak_service:server:escapePenalty', function()
     end
 end)
 
----@param playerId number
----@param data table
-RegisterNetEvent('peak_service:server:updateService', function(playerId, data)
+---@param identifier string
+RegisterNetEvent('peak_service:server:openItemStash', function(identifier)
     local source = source
     
-    if not IsPlayerAceAllowed(source, 'command') then return end
+    if not IsPlayerAceAllowed(source, 'command') then 
+        return 
+    end
     
-    if not activeServices[playerId] then
-        utils.notify(source, locale('notify.player_not_in_service'), 'error')
-        return
+    local items = getStoredItems(identifier)
+    local stashId = ('peak_service_%s'):format(identifier)
+    
+    exports.ox_inventory:RegisterStash(stashId, 'Community Service Items', 200, 100000)
+    
+    SetTimeout(200, function()
+        TriggerClientEvent('ox_inventory:openInventory', source, 'stash', stashId)
+        
+        SetTimeout(500, function()
+            exports.ox_inventory:ClearInventory(stashId)
+            
+            for _, item in ipairs(items) do
+                exports.ox_inventory:AddItem(stashId, item.name, item.count, item.metadata)
+            end
+        end)
+    end)
+    
+    local hasProcessed = false
+    
+    local eventHandler = function(playerId, inventoryId)
+        if playerId == source and inventoryId == stashId and not hasProcessed then
+            hasProcessed = true
+            
+            local stashItems = exports.ox_inventory:GetInventory(stashId)
+
+            if stashItems and stashItems.items then
+                local itemsToSave = {}
+
+                for slot, item in pairs(stashItems.items) do
+                    if item and item.name and item.count and item.count > 0 then
+                        itemsToSave[#itemsToSave + 1] = {
+                            name = item.name,
+                            count = item.count,
+                            metadata = item.metadata,
+                            slot = slot
+                        }
+                    end
+                end
+                
+                MySQL.query('DELETE FROM peak_service_items WHERE identifier = ?', { identifier })
+                
+                for _, item in ipairs(itemsToSave) do
+                    MySQL.insert('INSERT INTO peak_service_items (identifier, item_name, count, metadata, slot) VALUES (?, ?, ?, ?, ?)', {
+                        identifier,
+                        item.name,
+                        item.count,
+                        item.metadata and json.encode(item.metadata) or nil,
+                        item.slot or 1
+                    })
+                end
+                
+                utils.notify(source, locale('notify.items_saved'), 'success')
+            end
+        end
+    end
+    
+    AddEventHandler('ox_inventory:closedInventory', eventHandler)
+end)
+
+---@param playerId number
+---@param identifier string
+---@param data table
+RegisterNetEvent('peak_service:server:updateService', function(playerId, identifier, data)
+    local source = source
+    
+    if not IsPlayerAceAllowed(source, 'command') then 
+        return 
+    end
+    
+    local playerName
+    local isOnline = playerId and activeServices[playerId]
+    
+    if isOnline then
+        playerName = GetPlayerName(playerId)
+    else
+        if not identifier then
+            utils.notify(source, locale('notify.invalid_service_data'), 'error')
+            return
+        end
     end
 
-    local playerName = GetPlayerName(playerId)
-
     if data.tasksRemaining == 0 then
-        releasePlayer(playerId)
-        utils.notify(source, locale('notify.player_released', playerName), 'success')
+        if isOnline then
+            if releasePlayer(playerId) then
+                utils.notify(source, locale('notify.player_released', playerName), 'success')
+            end
+        else
+            MySQL.query('DELETE FROM peak_service WHERE identifier = ?', { identifier })
+            
+            utils.notify(source, locale('notify.offline_player_released'), 'success')
+        end
     else
-        if updateService(playerId, data) then
-            utils.notify(source, locale('notify.service_updated', playerName), 'success')
+        if isOnline then
+            if updateService(playerId, data) then
+                utils.notify(source, locale('notify.service_updated', playerName), 'success')
+            end
+        else
+            MySQL.update('UPDATE peak_service SET tasks_remaining = ?, reason = ? WHERE identifier = ?', {
+                data.tasksRemaining,
+                data.reason,
+                identifier
+            })
+
+            utils.notify(source, locale('notify.offline_service_updated'), 'success')
         end
     end
 end)
@@ -397,6 +610,7 @@ AddEventHandler('onResourceStart', function(resourceName)
     if cache.resource ~= resourceName then return end
 
     local players = GetPlayers()
+
     for _, playerId in ipairs(players) do
         loadPlayerService(tonumber(playerId))
     end
@@ -404,6 +618,7 @@ end)
   
 AddEventHandler('playerDropped', function()
     local source = source
+
     if activeServices[source] then
         saveServiceData(source)
     end
@@ -419,17 +634,42 @@ lib.addCommand(serverConfig.commands.services.name, {
     restricted = serverConfig.commands.services.restricted
 }, function(source)
     local services = {}
+    local onlinePlayers = {}
     
     for playerId, service in pairs(activeServices) do
         local playerName = GetPlayerName(playerId)
+
         if playerName then
+            onlinePlayers[playerId] = true
             services[#services + 1] = {
                 playerId = playerId,
                 playerName = playerName,
                 tasksRemaining = service.tasksRemaining,
                 reason = service.reason,
-                admin = service.admin
+                admin = service.admin,
+                identifier = service.identifier,
+                isOnline = true
             }
+        end
+    end
+    
+    local allServices = MySQL.query.await('SELECT * FROM peak_service')
+    
+    if allServices then
+        for _, service in ipairs(allServices) do
+            local playerId = bridge.getSourceFromIdentifier(service.identifier)
+            
+            if not playerId or not onlinePlayers[playerId] then
+                services[#services + 1] = {
+                    playerId = playerId,
+                    playerName = service.player_name or service.identifier,
+                    tasksRemaining = service.tasks_remaining,
+                    reason = service.reason,
+                    admin = service.admin,
+                    identifier = service.identifier,
+                    isOnline = false
+                }
+            end
         end
     end
 
@@ -441,7 +681,10 @@ lib.addCommand(serverConfig.commands.comserv.name, {
     restricted = serverConfig.commands.comserv.restricted,
 }, function(source)
     local data = lib.callback.await('peak_service:client:openDialog', source)
-    if not data then return end
+
+    if not data then 
+        return 
+    end
 
     startService({
         playerId = data.playerId,
@@ -471,7 +714,9 @@ lib.addCommand(serverConfig.commands.removecomserv.name, {
     end
 
     local playerName = GetPlayerName(playerId)
+
     releasePlayer(playerId)
+
     utils.notify(source, locale('notify.player_released', playerName), 'success')
 end)
 

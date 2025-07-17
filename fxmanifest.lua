@@ -3,7 +3,7 @@ game 'gta5'
 
 author 'Peak Scripts | KostaZ'
 description 'Community Service'
-version '1.0.5'
+version '1.1.0'
 lua54 'yes'
 use_experimental_fxv2_oal 'yes'
 
