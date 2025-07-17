@@ -10,46 +10,47 @@ jobs:
     name: Build and Create Tagged Release
     runs-on: ubuntu-latest
     steps:
-      - name: Install archive tools
-        run: sudo apt install zip
+      - run: sudo apt install zip
 
-      - name: Checkout source code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.event.repository.default_branch }}
 
-      - uses: pnpm/action-setup@v2.0.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+
+      - uses: pnpm/action-setup@v2
         with:
           version: 8.6.1
 
-      - name: Setup node
-        uses: actions/setup-node@v2
+      - shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v3
         with:
-          node-version: 18.x
-          cache: "pnpm"
-          cache-dependency-path: "web/pnpm-lock.yaml"
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
-      - name: Set env
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
-      - name: Install dependencies
-        run: pnpm install
+      - run: pnpm install
         working-directory: web
 
-      - name: Run build
-        run: pnpm build
+      - run: pnpm build
         working-directory: web
         env:
           CI: false
 
-      - name: Bump manifest version
-        run: node .github/actions/bump-manifest-version.js
+      - run: node .github/actions/bump-manifest-version.js
         env:
           TGT_RELEASE_VERSION: ${{ github.ref_name }}
 
-      - name: Push manifest change
-        uses: EndBug/add-and-commit@v8
+      - uses: EndBug/add-and-commit@v8
         with:
           add: fxmanifest.lua
           push: true
@@ -57,13 +58,11 @@ jobs:
           author_email: 41898282+github-actions[bot]@users.noreply.github.com
           message: "chore: bump manifest version to ${{ github.ref_name }}"
 
-      - name: Update tag ref
-        uses: EndBug/latest-tag@latest
+      - uses: EndBug/latest-tag@latest
         with:
           tag-name: ${{ github.ref_name }}
 
-      - name: Bundle files
-        run: |
+      - run: |
           mkdir -p ./temp/peak_service
           mkdir -p ./temp/peak_service/web
           cp ./{README.md,LICENSE,fxmanifest.lua} ./temp/peak_service
@@ -71,8 +70,7 @@ jobs:
           cp -r ./web/dist ./temp/peak_service/web/dist
           cd ./temp && zip -r ../peak_service.zip ./peak_service
 
-      - name: Create Release
-        uses: "marvinpinto/action-automatic-releases@v1.2.1"
+      - uses: "marvinpinto/action-automatic-releases@v1.2.1"
         id: auto_release
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
